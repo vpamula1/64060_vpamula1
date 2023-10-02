@@ -1,0 +1,394 @@
+---
+title: "FML_Assignment2"
+author: "Vivek Pamulaparthi"
+date: "2023-09-30"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## <span style="color:blue">SUMMARY</span>
+
+**Questions & Answers**
+
+1. Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. Perform a k-NN classification with all predictors except ID and ZIP code using k = 1. Remember to transform categorical predictors with more than two categories into dummy variables first. Specify the success class as 1 (loan acceptance), and use the default cutoff value of 0.5. How would this customer be classified?
+
+Ans: This new customer is classified as 0. The model predicted that the customer would not apply for a personal loan based on the test data that was provided.  This new customer would be classified as 0, does not take the personal loan
+
+
+2. What is a choice of k that balances between overfitting and ignoring the predictor information?
+
+Ans: Based on the above result the best k for this data set is 3 as it has the highest accuracy of 96.40%
+
+
+3. Show the confusion matrix for the validation data that results from using the best k.
+
+Ans: Using k=3 as we got the best value of K as 3 we got the confusion matrix with True Negative= 1805, True Positive= 123, False Positive= 69 and False Negative= 3 with accuracy of 0.964 and other parameters.
+
+
+4. Consider the following customer: Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1 and Credit Card = 1. Classify the customer using the best k.
+
+Ans: The model predicted that the customer would not apply for a personal loan based on the best k value, which was determined to be 3.
+
+5. Repartition the data, this time into training, validation, and test sets (50% : 30% : 20%). Apply the k-NN method with the k chosen above. Compare the confusion matrix of the test set with that of the training and validation sets. Comment on the differences and their reason.
+
+Ans: 
+a. The accuracy of the training set is higher than the validation and testing sets with 98.08%, this does not guarantee that the model will apply well to fresh data, either.
+
+b. The k-NN technique and the choice of k are both quite straightforward, which might aid in the model's successful generalization. Larger variances might be seen in more complicated models.
+
+c. The model's performance should remain constant across these sets if the training, validation, and test sets are all representative of the same underlying data distribution and have comparable data quality.
+
+d. A large percentage of the true negatives in the training set demonstrate how well the model shows the non-acceptance for clients who rejected the loan during training.
+
+e. The Test set data is quite similar with the validation set, the number of true positives in the test set is similarly lower than in the training set. This suggests that when the model is applied to the test set, its performance remains consistent.
+
+f. Because it reflects completely fresh, previously unobserved data, the confusion matrix on the test set is the most accurate gauge of your model's performance in real-world scenarios. Any variations or discrepancies between the training and validation sets and the test set are a sign of how well your model generalizes. Here we got not too high or low values in the matrix when compared with Training and Validation sets.
+
+g. Similar model performance would arise if the correlations between client features and loan acceptance were the same across all three groups.
+
+
+## Problem Statement
+
+Universal bank is a young bank growing rapidly in terms of overall customer acquisition.
+The majority of these customers are liability customers (depositors) with varying sizes of
+relationship with the bank. The customer base of asset customers (borrowers) is quite
+small, and the bank is interested in expanding this base rapidly in more loan business. In
+particular, it wants to explore ways of converting its liability customers to personal loan
+customers.
+
+A campaign that the bank ran last year for liability customers showed a healthy conversion
+rate of over 9% success. This has encouraged the retail marketing department to devise
+smarter campaigns with better target marketing. The goal is to use k-NN to predict whether
+a new customer will accept a loan offer. This will serve as the basis for the design of a new campaign.
+
+The file UniversalBank.csv contains data on 5000 customers. The data include customer
+demographic information (age, income, etc.), the customer’s relationship with the bank
+(mortgage, securities account, etc.), and the customer response to the last personal loan
+campaign (Personal Loan). Among these 5000 customers, only 480 (= 9.6%) accepted the
+personal loan that was offered to them in the earlier campaign.
+
+Partition the data into training (60%) and validation (40%) sets
+
+***
+
+## Initially, load all the required libraries
+
+```{r}
+library(class)
+library(caret)
+library(e1071)
+library(dplyr)
+```
+
+#I loaded the UniversalBank dataset given in the assignment, read the data and returning the dimensions of the new dataset.
+
+```{r}
+library(readr)
+UniBk.df <- read.csv("UniversalBank.csv")
+dim(UniBk.df)
+```
+
+```{r}
+any(is.na(UniBk.df))
+```
+
+```{r}
+View(UniBk.df)
+```
+
+Removing the columns ID and ZIP from the new dataset created.
+
+```{r}
+UniBk.df <- UniBk.df[,-c(1,5)]
+```
+
+#After removing the ID and Zip Code Columns:
+
+```{r}
+View(UniBk.df)
+```
+
+
+```{r}
+class(UniBk.df$Education) = "character" 
+class(UniBk.df$Education)
+```
+```{r}
+dummyMod <- dummyVars(~Education,data=UniBk.df) 
+eduDummy <- predict(dummyMod,UniBk.df)  # apply it to the data set
+head(eduDummy)
+
+```
+
+```{r}
+UniBk.df <- select(UniBk.df,-Education) 
+UniBk.df_dummy <- cbind(UniBk.df[,-13],eduDummy) # Add the education dummy variables to the original data set.
+head(UniBk.df_dummy)   #Here we are printing the 1st few rows of the dataset : UniBk.df_dummy
+```
+
+```{r}
+UniBk.df_dummy <- UniBk.df_dummy %>% select(Personal.Loan, everything()) # To use the dependent variable in the model, place it at the start of dataset.
+UniBk.df_dummy$Personal.Loan = as.factor(UniBk.df_dummy$Personal.Loan) # Converting the Personal.Loan column into factor variables.
+head(UniBk.df_dummy)
+
+```
+
+***
+
+## Question 1
+
+***Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 =1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. Perform a k-NN classification with all predictors except ID and ZIP code using k = 1. Remember to transform categorical predictors with more than two categories into dummy variables first. Specify the success class as 1 (loan acceptance), and use the default cutoff value of 0.5. How would this customer be classified?***
+
+
+#Converting the entire dataset into two parts: 60% Training set and 40% Validation set
+
+```{r}
+set.seed(46)
+Training_Index = createDataPartition(UniBk.df_dummy$Personal.Loan,p=0.60, list=FALSE) # Training Set(60%)
+Training_Data = UniBk.df_dummy[Training_Index,]
+Validate_Data = UniBk.df_dummy[-Training_Index,] # Validation(40%)
+Testing_Data <- data.frame(Age=40,Experience=10,Income=84,Family=2,CCAvg=2,Mortgage=0,SecuritiesAccount=0,CDAccount=0,Online=1,CreditCard=1,Education1=0,Education2=1,Education3=0)
+
+```
+
+#Printing the summary of Training Data, Validation Data and Testing Data
+
+```{r}
+summary(Training_Data)
+```
+
+```{r}
+summary(Validate_Data)
+```
+
+```{r}
+summary(Testing_Data)
+```
+
+```{r}
+colnames(UniBk.df_dummy) 
+```
+#Normalizing the data:
+
+```{r}
+normal_var <- c("Age","Experience","Income","Family","CCAvg","Mortgage") # Getting the numeric Variables
+training_labels <- Training_Data[,normal_var] # In Training data, filtering the numerical variables.
+validate_labels <- Validate_Data[,normal_var] # In Validation data, filtering the numerical variables.
+testing_normalize <- Testing_Data[,normal_var] # In Testing data, filtering the numerical variables.
+normalize_data <- preProcess(Training_Data[,normal_var], method=c("center", "scale")) # Discovering the normalized values of the numerical variables in the train data and use preProcess to apply it to the validation and test data.
+
+training_labels <- predict(normalize_data,Training_Data)
+validate_labels <- predict(normalize_data, Validate_Data)
+testing_normalize <- predict(normalize_data, testing_normalize)
+
+```
+
+#Summary of Training, Validation, Testing Tables after Normalizing the data
+
+```{r}
+summary(training_labels)
+```
+```{r}
+summary(validate_labels)
+```
+
+```{r}
+summary(testing_normalize)
+```
+***Model: Using knn method for the train method using Caret package***
+
+```{r}
+set.seed(624)
+Grd <- expand.grid(k=seq(1:30))
+model2 <- train(Personal.Loan~.,data=training_labels,method="knn",tuneGrid=Grd)
+model2
+
+plot(model2$results$k,model2$results$Accuracy, type = 'o')
+```
+
+
+```{r}
+Ideal_k <- model2$bestTune[[1]] # saves the best k
+Ideal_k # Here the best k turned out to be 1 using the training data 
+
+```
+Model 2: From the Class Package, we now use the KNN function.
+
+```{r}
+library(class)
+Training_Predictors <- select(training_labels,-Personal.Loan)
+Testing_Predictors <- cbind(testing_normalize,Testing_Data[,7:13])
+Validate_Predictors <- select(validate_labels,-Personal.Loan)
+Training_Labels <- training_labels[,1]
+Validate_Labels <- validate_labels[,1]
+
+#Now Predicting using KNN model
+
+Predicted_Validate_Labels <- knn(Training_Predictors,Validate_Predictors,cl = Training_Labels,k=1)
+head(Predicted_Validate_Labels)
+
+```
+```{r}
+Predicted_Testing_Labels <- knn(Training_Predictors,Testing_Predictors,cl = Training_Labels,k=1)
+head(Predicted_Testing_Labels) 
+```
+***1: The model predicted that the customer would not apply for a personal loan based on the test data that was provided.***
+
+***
+
+***
+
+## Question 2
+
+***What is a choice of k that balances between overfitting and ignoring the predictor information?***
+
+```{r}
+exact <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
+
+for(i in 1:14) {
+  knn.predict <- knn(Training_Predictors,Validate_Predictors,cl = Training_Labels,k=i)
+  exact[i, 2] <- confusionMatrix(knn.predict, Validate_Labels)$overall[1] 
+}
+exact
+
+```
+
+***2: Based on the above result the best k for this data set is 3 as it has the highest accuracy of 96.40%***
+
+***
+
+***
+## Question 3
+
+***Show the confusion matrix for the validation data that results from using the best k.***
+
+```{r}
+#Installed the library gmodels using the console
+library(gmodels)
+Predicted_Validate_Labels <- knn(Training_Predictors,Validate_Predictors,cl = Training_Labels,k=3)
+head(Predicted_Validate_Labels)
+
+```
+# Confusion Matrix for the validation data
+
+```{r}
+CrossTable(x = Validate_Labels,y = Predicted_Validate_Labels,prop.chisq = FALSE)
+```
+***3: Using k=3 as we got the best value of K as 3, the above created confusion represents the confusion matrix for the validation data.***
+***
+
+***
+## Question 4
+
+***Consider the following customer: Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1 and Credit Card = 1. Classify the customer using the best k.***
+
+```{r}
+Predicted_Testing_Labels <- knn(Training_Predictors,Testing_Predictors,cl = Training_Labels,k=3)
+head(Predicted_Testing_Labels) 
+
+```
+***4: The model predicted that the customer would not apply for a personal loan based on the best k value, which was determined to be 3.***
+***
+
+***
+## Question 5
+
+***Repartition the data, this time into training, validation, and test sets (50% : 30% : 20%). Apply the k-NN method with the k chosen above. Compare the confusion matrix of the test set with that of the training and validation sets. Comment on the differences and their reason.***
+
+
+
+#Now, split the data into train, validation and test data sets by the proportions of 50%, 30% and 20% respectively
+
+```{r}
+library(splitTools)
+
+#Data should be partitioned
+set.seed(5346)
+Newdata <- partition(UniBk.df_dummy$Age, p = c(train = 0.5, valid = 0.3, test = 0.2))
+str(data)
+
+
+training..nm <- UniBk.df_dummy[Newdata$train, ]
+validate..nm <- UniBk.df_dummy[Newdata$valid, ]
+testing..nm <- UniBk.df_dummy[Newdata$test, ]
+
+```
+Normalize the data using train data set:
+
+```{r}
+#normal_var <- c("Age","Experience","Income","Family","CCAvg","Mortgage") # Get all the numeric Variables
+training.normal..nm <- training..nm[,normal_var] #In Training data, filtering the numerical variables.
+validate.normal..nm <- validate..nm[,normal_var] # In Validation data, filtering the numerical variables.
+testing.normal..nm <- testing..nm[,normal_var] # In Testing data, filtering the numerical variables.
+normalize_data..nm <- preProcess(training..nm[,normal_var], method=c("center", "scale")) 
+
+#Discovering the normalized values of the numerical variables in the train data and use preProcess to apply it to the validation and test data.
+
+training.normal..nm <- predict(normalize_data..nm,training..nm)
+validate.normal..nm <- predict(normalize_data..nm, validate..nm)
+testing.normal..nm <- predict(normalize_data..nm, testing..nm)
+
+```
+
+# Normalized value Summary of Training, Validation and Testing Data
+
+```{r}
+summary(training.normal..nm)
+
+```
+```{r}
+summary(validate.normal..nm)
+```
+```{r}
+summary(testing.normal..nm)
+```
+
+# Predicted Values of Training, Validation and Testing data
+
+```{r}
+Training_Predictors..nm <- select(training.normal..nm,-Personal.Loan) #Predicting the training values
+Validate_Predictors..nm <- select(validate.normal..nm,-Personal.Loan) #Predicting the validation values
+Testing_Predictors..nm <- select(testing.normal..nm,-Personal.Loan) ##Predicting the Testing values
+Training_Labels_Ub <- training.normal..nm[,1]
+Validate_Labels_Ub <- validate.normal..nm[,1]
+Testing_Labels_Ub <- testing.normal..nm[,1]
+
+Predicted_Training_Labels_Ub <- knn(Training_Predictors..nm,Training_Predictors..nm,cl = Training_Labels_Ub,k=3)
+head(Predicted_Training_Labels_Ub)
+
+```
+```{r}
+Predicted_Validate_Labels_Ub <- knn(Training_Predictors..nm,Validate_Predictors..nm,cl = Training_Labels_Ub,k=3)
+head(Predicted_Validate_Labels_Ub)
+
+```
+```{r}
+Predicted_Testing_Labels_Ub <- knn(Training_Predictors..nm,Testing_Predictors..nm,cl = Training_Labels_Ub,k=3)
+head(Predicted_Testing_Labels_Ub)
+
+```
+# Confusion Matrix for the Training set
+
+```{r}
+confusionMatrix(Predicted_Training_Labels_Ub,Training_Labels_Ub,positive = "1") #This displays the confusion matrix for Training dataset
+```
+# Confusion Matrix for the Validation set
+
+```{r}
+confusionMatrix(Predicted_Validate_Labels_Ub,Validate_Labels_Ub,positive = "1")  #This displays the confusion matrix for validation dataset 
+```
+# Confusion Matrix for the Testing set
+
+```{r}
+confusionMatrix(Predicted_Testing_Labels_Ub,Testing_Labels_Ub,positive = "1")  #This displays the confusion matrix for Testing dataset 
+```
+***5:The accuracy of the training set is higher than the validation and testing sets with 98.08%, this does not guarantee that the model will apply well to fresh data, either.***
+
+***
